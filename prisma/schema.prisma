@@ -1,0 +1,420 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  password      String?
+  role          UserRole  @default(AGENT)
+  isActive      Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts Account[]
+  sessions Session[]
+  leads    Lead[]
+  deals    Deal[]
+  tasks    Task[]
+  interactions Interaction[]
+  documents Document[]
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+  VIEWER
+}
+
+model Lead {
+  id          String      @id @default(cuid())
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  company     String?
+  jobTitle    String?
+  source      LeadSource  @default(WEBSITE)
+  status      LeadStatus  @default(NEW)
+  priority    Priority    @default(MEDIUM)
+  notes       String?
+  budget      Float?
+  timeline    String?
+  propertyType PropertyType[]
+  location    String?
+  assignedTo  String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  user        User?       @relation(fields: [assignedTo], references: [id])
+  contacts    Contact[]
+  deals       Deal[]
+  interactions Interaction[]
+  tasks       Task[]
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([createdAt])
+}
+
+enum LeadSource {
+  WEBSITE
+  REFERRAL
+  COLD_CALL
+  SOCIAL_MEDIA
+  EMAIL_CAMPAIGN
+  TRADE_SHOW
+  OTHER
+}
+
+enum LeadStatus {
+  NEW
+  CONTACTED
+  QUALIFIED
+  PROPOSAL_SENT
+  NEGOTIATING
+  CLOSED_WON
+  CLOSED_LOST
+  DISQUALIFIED
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum PropertyType {
+  RESIDENTIAL
+  COMMERCIAL
+  INDUSTRIAL
+  MIXED_USE
+  LAND
+  MULTIFAMILY
+  OFFICE
+  RETAIL
+  WAREHOUSE
+  HOTEL
+}
+
+model Contact {
+  id          String    @id @default(cuid())
+  leadId      String
+  firstName   String
+  lastName    String
+  email       String
+  phone       String?
+  company     String?
+  jobTitle    String?
+  address     String?
+  city        String?
+  state       String?
+  zipCode     String?
+  country     String?
+  isPrimary   Boolean   @default(false)
+  notes       String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  deals       Deal[]
+  interactions Interaction[]
+
+  @@index([leadId])
+  @@index([email])
+}
+
+model Deal {
+  id              String      @id @default(cuid())
+  title           String
+  description     String?
+  leadId          String?
+  contactId       String?
+  assignedTo      String?
+  status          DealStatus  @default(OPPORTUNITY)
+  stage           DealStage   @default(DISCOVERY)
+  value           Float?
+  probability     Int         @default(10)
+  expectedCloseDate DateTime?
+  actualCloseDate DateTime?
+  source          DealSource  @default(LEAD_CONVERSION)
+  notes           String?
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  lead            Lead?       @relation(fields: [leadId], references: [id])
+  contact         Contact?    @relation(fields: [contactId], references: [id])
+  user            User?       @relation(fields: [assignedTo], references: [id])
+  properties      Property[]
+  tasks           Task[]
+  interactions    Interaction[]
+  documents       Document[]
+  payments        Payment[]
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([expectedCloseDate])
+}
+
+enum DealStatus {
+  OPPORTUNITY
+  ACTIVE
+  WON
+  LOST
+  ON_HOLD
+}
+
+enum DealStage {
+  DISCOVERY
+  QUALIFICATION
+  PROPOSAL
+  NEGOTIATION
+  CLOSING
+  CLOSED
+}
+
+enum DealSource {
+  LEAD_CONVERSION
+  REFERRAL
+  COLD_OUTREACH
+  REPEAT_CLIENT
+  PARTNERSHIP
+}
+
+model Property {
+  id              String        @id @default(cuid())
+  name            String
+  address         String
+  city            String
+  state           String
+  zipCode         String
+  county          String?
+  propertyType    PropertyType
+  landSize        Float?        // in acres
+  buildingSize    Float?        // in sq ft
+  zoning          String?
+  currentUse      String?
+  potentialUse    String?
+  price           Float?
+  pricePerSqFt    Float?
+  capRate         Float?
+  noi             Float?        // Net Operating Income
+  yearBuilt       Int?
+  condition       PropertyCondition?
+  features        String[]
+  images          String[]
+  documents       Document[]
+  deals           Deal[]
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([propertyType])
+  @@index([city])
+  @@index([price])
+}
+
+enum PropertyCondition {
+  EXCELLENT
+  GOOD
+  FAIR
+  POOR
+  NEEDS_RENOVATION
+}
+
+model Task {
+  id          String      @id @default(cuid())
+  title       String
+  description String?
+  leadId      String?
+  dealId      String?
+  assignedTo  String?
+  assignedBy  String?
+  status      TaskStatus  @default(PENDING)
+  priority    Priority    @default(MEDIUM)
+  dueDate     DateTime?
+  completedAt DateTime?
+  taskType    TaskType
+  notes       String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  lead        Lead?       @relation(fields: [leadId], references: [id])
+  deal        Deal?       @relation(fields: [dealId], references: [id])
+  user        User?       @relation(fields: [assignedTo], references: [id])
+
+  @@index([status])
+  @@index([assignedTo])
+  @@index([dueDate])
+}
+
+enum TaskStatus {
+  PENDING
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  OVERDUE
+}
+
+enum TaskType {
+  CALL
+  EMAIL
+  MEETING
+  SITE_VISIT
+  PROPOSAL
+  FOLLOW_UP
+  DOCUMENT_REVIEW
+  NEGOTIATION
+  CLOSING
+  OTHER
+}
+
+model Interaction {
+  id          String            @id @default(cuid())
+  leadId      String?
+  dealId      String?
+  contactId   String?
+  userId      String?
+  type        InteractionType
+  subject     String?
+  content     String
+  duration    Int?              // in minutes
+  outcome     InteractionOutcome?
+  nextAction  String?
+  scheduledAt DateTime?
+  createdAt   DateTime          @default(now())
+
+  lead        Lead?             @relation(fields: [leadId], references: [id])
+  deal        Deal?             @relation(fields: [dealId], references: [id])
+  contact     Contact?          @relation(fields: [contactId], references: [id])
+  user        User?             @relation(fields: [userId], references: [id])
+
+  @@index([leadId])
+  @@index([dealId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+enum InteractionType {
+  PHONE_CALL
+  EMAIL
+  MEETING
+  SITE_VISIT
+  TEXT_MESSAGE
+  VIDEO_CALL
+  OTHER
+}
+
+enum InteractionOutcome {
+  POSITIVE
+  NEUTRAL
+  NEGATIVE
+  NO_RESPONSE
+  SCHEDULED_FOLLOW_UP
+}
+
+model Document {
+  id          String        @id @default(cuid())
+  title       String
+  description String?
+  fileName    String
+  fileUrl     String
+  fileSize    Int
+  fileType    String
+  dealId      String?
+  propertyId  String?
+  uploadedBy  String
+  createdAt   DateTime      @default(now())
+
+  deal        Deal?         @relation(fields: [dealId], references: [id])
+  property    Property?     @relation(fields: [propertyId], references: [id])
+  user        User          @relation(fields: [uploadedBy], references: [id])
+
+  @@index([dealId])
+  @@index([propertyId])
+}
+
+model Payment {
+  id          String        @id @default(cuid())
+  dealId      String
+  amount      Float
+  currency    String        @default("USD")
+  status      PaymentStatus @default(PENDING)
+  method      PaymentMethod
+  stripePaymentId String?
+  description String?
+  dueDate     DateTime?
+  paidAt      DateTime?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  deal        Deal          @relation(fields: [dealId], references: [id], onDelete: Cascade)
+
+  @@index([dealId])
+  @@index([status])
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  CANCELLED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+  CHECK
+  CASH
+  WIRE_TRANSFER
+  OTHER
+} 
