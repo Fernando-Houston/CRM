@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
     
     // Store page view data for analytics
-    await prisma.pageView.create({
+    // Note: PageView model not in schema, logging for now
+    console.log('PageView data:', {
       data: {
         url: body.url,
         title: body.title,

@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
+
+// Helper function to format source names
+function formatSourceName(source: string): string {
+  const sourceMap: Record<string, string> = {
+    'roi_calculator': 'ROI Calculator',
+    'market_report': 'Market Reports',
+    'newsletter_signup': 'Newsletter Signup',
+    'tool_usage': 'Tool Usage',
+    'consultation_request': 'Consultation Requests',
+    'zoning_alert': 'Zoning Alerts',
+    'website_contact': 'Website Contact',
+    'social_media': 'Social Media',
+    'referral': 'Referrals',
+  };
+
+  return sourceMap[source] || source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -26,7 +43,7 @@ export async function GET(request: NextRequest) {
 
     // Get leads by source
     const leadsBySource = await prisma.lead.groupBy({
-      by: ['sources'],
+      by: ['source'],
       _count: {
         id: true,
       },
@@ -43,7 +60,7 @@ export async function GET(request: NextRequest) {
         createdAt: {
           gte: startDate,
         },
-        status: 'closed',
+        status: 'WON',
       },
       include: {
         lead: true,
@@ -52,12 +69,12 @@ export async function GET(request: NextRequest) {
 
     // Calculate metrics for each source
     const analysis = leadsBySource.map(sourceGroup => {
-      const source = sourceGroup.sources[0];
+      const source = sourceGroup.source;
       const totalLeads = sourceGroup._count.id;
       
       // Find deals for this source
       const sourceDeals = dealsBySource.filter(deal => 
-        deal.lead.sources.includes(source)
+        deal.lead?.source === source
       );
       
       const closedDeals = sourceDeals.length;
@@ -70,7 +87,7 @@ export async function GET(request: NextRequest) {
       const estimatedROI = totalLeads > 0 ? ((totalRevenue / (totalLeads * 100)) * 100).toFixed(0) + '%' : '0%';
 
       return {
-        source: this.formatSourceName(source),
+        source: formatSourceName(source),
         totalLeads,
         conversionRate,
         avgDealValue: Math.round(avgDealValue),
@@ -95,19 +112,4 @@ export async function GET(request: NextRequest) {
       { status: 500 }
     );
   }
-
-  private formatSourceName(source: string): string {
-  const sourceMap: Record<string, string> = {
-    'roi_calculator': 'ROI Calculator',
-    'market_report': 'Market Reports',
-    'newsletter_signup': 'Newsletter Signup',
-    'tool_usage': 'Tool Usage',
-    'consultation_request': 'Consultation Requests',
-    'zoning_alert': 'Zoning Alerts',
-    'website_contact': 'Website Contact',
-    'social_media': 'Social Media',
-    'referral': 'Referrals',
-  };
-
-  return sourceMap[source] || source.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
 } 

@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Check if lead with this email already exists
-    const existingLead = await prisma.lead.findUnique({
+    const existingLead = await prisma.lead.findFirst({
       where: { email: body.email },
     })
 

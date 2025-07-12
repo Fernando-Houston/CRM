@@ -25,7 +25,7 @@ interface CaptureStats {
   thisWeek: number;
   thisMonth: number;
   sourceBreakdown: Array<{
-    sources: string[];
+    source: string;
     _count: { id: number };
   }>;
 }
@@ -75,6 +75,13 @@ export default function LeadCaptureDashboard() {
   };
 
   const sourceIcons: Record<string, any> = {
+    WEBSITE: Globe,
+    REFERRAL: Users,
+    COLD_CALL: Building,
+    SOCIAL_MEDIA: Building,
+    EMAIL_CAMPAIGN: Mail,
+    TRADE_SHOW: Users,
+    OTHER: Zap,
     roi_calculator: Calculator,
     market_report: FileText,
     newsletter_signup: Mail,
@@ -87,6 +94,13 @@ export default function LeadCaptureDashboard() {
   };
 
   const sourceLabels: Record<string, string> = {
+    WEBSITE: 'Website',
+    REFERRAL: 'Referral',
+    COLD_CALL: 'Cold Call',
+    SOCIAL_MEDIA: 'Social Media',
+    EMAIL_CAMPAIGN: 'Email Campaign',
+    TRADE_SHOW: 'Trade Show',
+    OTHER: 'Other',
     roi_calculator: 'ROI Calculator',
     market_report: 'Market Report',
     newsletter_signup: 'Newsletter Signup',
@@ -178,7 +192,7 @@ export default function LeadCaptureDashboard() {
         <CardContent>
           <div className="space-y-4">
             {stats?.sourceBreakdown.map((source, index) => {
-              const sourceKey = source.sources[0];
+              const sourceKey = source.source;
               const Icon = sourceIcons[sourceKey] || Globe;
               const totalLeads = stats.sourceBreakdown.reduce((sum, s) => sum + s._count.id, 0);
               const percentage = totalLeads > 0 ? (source._count.id / totalLeads) * 100 : 0;

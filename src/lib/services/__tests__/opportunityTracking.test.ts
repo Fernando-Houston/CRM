@@ -1,5 +1,5 @@
 import { opportunityTrackingService } from '../opportunityTracking'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 
 // Mock the prisma client
 jest.mock('@/lib/prisma', () => ({

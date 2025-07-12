@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   ArrowLeft, 
@@ -13,6 +13,9 @@ import {
   FileText
 } from 'lucide-react'
 import Link from 'next/link'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import toast from 'react-hot-toast'
 
 const propertyTypes = [
   'RESIDENTIAL',
@@ -80,21 +83,81 @@ export default function NewLeadPage() {
     e.preventDefault()
     setIsSubmitting(true)
 
+    // Show loading toast
+    const loadingToast = toast.loading('Creating lead...')
+
     try {
-      // TODO: Replace with actual API call
-      console.log('Submitting lead:', formData)
-      
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
-      // Redirect to leads list
-      router.push('/leads')
+      const response = await fetch('/api/leads', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          firstName: formData.firstName,
+          lastName: formData.lastName,
+          email: formData.email,
+          phone: formData.phone,
+          company: formData.company,
+          jobTitle: formData.jobTitle,
+          source: formData.source,
+          priority: formData.priority,
+          budget: formData.budget ? parseFloat(formData.budget.replace(/[^0-9.]/g, '')) : null,
+          timeline: formData.timeline,
+          propertyType: formData.propertyTypes,
+          location: formData.location,
+          notes: formData.notes,
+        }),
+      })
+
+      if (response.ok) {
+        // Dismiss loading toast and show success
+        toast.dismiss(loadingToast)
+        toast.success(`Lead created successfully! ${formData.firstName} ${formData.lastName} has been added to your leads.`)
+        
+        // Redirect to leads list
+        router.push('/leads')
+      } else {
+        const errorData = await response.json()
+        toast.dismiss(loadingToast)
+        toast.error(errorData.message || 'Failed to create lead. Please try again.')
+      }
     } catch (error) {
+      toast.dismiss(loadingToast)
+      toast.error('Network error. Please check your connection and try again.')
       console.error('Error creating lead:', error)
     } finally {
       setIsSubmitting(false)
     }
   }
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't trigger shortcuts when user is typing in inputs/textareas
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return
+      }
+
+      // Cmd/Ctrl + S: Save form
+      if ((event.metaKey || event.ctrlKey) && event.key === 's') {
+        event.preventDefault()
+        if (!isSubmitting) {
+          const form = document.querySelector('form')
+          if (form) {
+            form.requestSubmit()
+          }
+        }
+      }
+
+      // Escape: Go back to leads list
+      if (event.key === 'Escape') {
+        router.push('/leads')
+      }
+    }
+
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [router, isSubmitting])
 
   return (
     <div className="space-y-6">
@@ -103,11 +166,12 @@ export default function NewLeadPage() {
         <div className="flex items-center space-x-4">
           <Link
             href="/leads"
-            className="text-gray-400 hover:text-gray-600"
+            className="flex items-center text-gray-600 hover:text-houston-600 transition-colors"
           >
-            <ArrowLeft className="h-5 w-5" />
+            <ArrowLeft className="h-5 w-5 mr-2" />
+            <span className="text-sm font-medium">Back to Leads</span>
           </Link>
-          <div>
+          <div className="border-l pl-4 ml-4">
             <h1 className="text-2xl font-bold text-gray-900">Add New Lead</h1>
             <p className="text-gray-600">Capture a new real estate development lead</p>
           </div>
@@ -117,11 +181,14 @@ export default function NewLeadPage() {
       {/* Lead Form */}
       <form onSubmit={handleSubmit} className="space-y-8">
         {/* Contact Information */}
-        <div className="card">
-          <div className="flex items-center mb-6">
-            <User className="h-5 w-5 text-houston-600 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">Contact Information</h2>
-          </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <User className="h-5 w-5 text-houston-600 mr-2" />
+              Contact Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
@@ -187,47 +254,51 @@ export default function NewLeadPage() {
               />
             </div>
           </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Company Information */}
-        <div className="card">
-          <div className="flex items-center mb-6">
-            <Building2 className="h-5 w-5 text-houston-600 mr-2" />
-            <h2 className="text-lg font-semibold text-gray-900">Company Information</h2>
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
-                Company Name
-              </label>
-              <input
-                type="text"
-                id="company"
-                name="company"
-                value={formData.company}
-                onChange={handleInputChange}
-                className="input-field"
-                placeholder="Enter company name"
-              />
-            </div>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center">
+              <Building2 className="h-5 w-5 text-houston-600 mr-2" />
+              Company Information
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div>
+                <label htmlFor="company" className="block text-sm font-medium text-gray-700 mb-2">
+                  Company Name
+                </label>
+                <input
+                  type="text"
+                  id="company"
+                  name="company"
+                  value={formData.company}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-houston-500 focus:border-transparent"
+                  placeholder="Enter company name"
+                />
+              </div>
 
-            <div>
-              <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-2">
-                Job Title
-              </label>
-              <input
-                type="text"
-                id="jobTitle"
-                name="jobTitle"
-                value={formData.jobTitle}
-                onChange={handleInputChange}
-                className="input-field"
-                placeholder="Enter job title"
-              />
+              <div>
+                <label htmlFor="jobTitle" className="block text-sm font-medium text-gray-700 mb-2">
+                  Job Title
+                </label>
+                <input
+                  type="text"
+                  id="jobTitle"
+                  name="jobTitle"
+                  value={formData.jobTitle}
+                  onChange={handleInputChange}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-houston-500 focus:border-transparent"
+                  placeholder="Enter job title"
+                />
+              </div>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
         {/* Lead Details */}
         <div className="card">
@@ -391,6 +462,7 @@ export default function NewLeadPage() {
               <>
                 <Save className="h-4 w-4 mr-2" />
                 Save Lead
+                <span className="ml-2 text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded">⌘+S</span>
               </>
             )}
           </button>

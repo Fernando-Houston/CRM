@@ -1,5 +1,5 @@
 import { leadScoringService } from '../leadScoring'
-import { prisma } from '@/lib/prisma'
+import { prisma } from '@/lib/db'
 
 // Mock the prisma client
 jest.mock('@/lib/prisma', () => ({

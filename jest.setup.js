@@ -45,7 +45,7 @@ jest.mock('next/navigation', () => ({
 }))
 
 // Mock Prisma
-jest.mock('@/lib/prisma', () => ({
+jest.mock('@/lib/db', () => ({
   prisma: {
     lead: {
       findMany: jest.fn(),

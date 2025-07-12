@@ -120,7 +120,6 @@ class WebsiteCaptureIntegration {
           source: 'market_report',
           sourceDetails: {
             pageUrl: window.location.href,
-            downloadUrl: href,
             userAgent: navigator.userAgent,
             ...this.getUTMParameters(),
           },

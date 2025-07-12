@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,7 +80,7 @@ async function getMonthlyTrends(startDate: Date, endDate: Date) {
             gte: month.start,
             lte: month.end,
           },
-          status: 'closed',
+          status: 'WON',
         },
       });
 

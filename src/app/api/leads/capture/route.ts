@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/db';
 import { leadIntelligenceService } from '@/lib/services/leadIntelligence';
 import { z } from 'zod';
 
@@ -48,7 +48,7 @@ export async function POST(request: NextRequest) {
         email: validatedData.email,
       },
       include: {
-        contact: true,
+        contacts: true,
       },
     });
 
@@ -57,11 +57,8 @@ export async function POST(request: NextRequest) {
       const updatedLead = await prisma.lead.update({
         where: { id: existingLead.id },
         data: {
-          sources: {
-            push: validatedData.source,
-          },
-          lastActivity: new Date(),
-          status: existingLead.status === 'new' ? 'contacted' : existingLead.status,
+          source: 'WEBSITE', // Map to valid LeadSource
+          status: existingLead.status === 'NEW' ? 'CONTACTED' : existingLead.status,
         },
       });
 
@@ -69,10 +66,9 @@ export async function POST(request: NextRequest) {
       await prisma.interaction.create({
         data: {
           leadId: existingLead.id,
-          type: 'lead_capture',
-          method: validatedData.source,
-          notes: `Lead captured from ${validatedData.source}`,
-          sourceDetails: validatedData.sourceDetails,
+          type: 'EMAIL',
+          subject: `Lead captured from ${validatedData.source}`,
+          content: `Lead captured from ${validatedData.source}`,
         },
       });
 
@@ -92,16 +88,14 @@ export async function POST(request: NextRequest) {
         lastName: validatedData.lastName || '',
         phone: validatedData.phone || '',
         company: validatedData.company || '',
-        sources: [validatedData.source],
-        status: 'new',
-        priority: 'medium',
-        interests: validatedData.interests || [],
-        budget: validatedData.budget || '',
+        source: 'WEBSITE', // Map custom sources to schema enum
+        status: 'NEW',
+        priority: 'MEDIUM',
+        budget: validatedData.budget ? parseFloat(validatedData.budget) : null,
         timeline: validatedData.timeline || '',
-        propertyType: validatedData.propertyType || '',
+        propertyType: validatedData.propertyType ? [validatedData.propertyType as any] : [],
         location: validatedData.location || '',
-        sourceDetails: validatedData.sourceDetails || {},
-        assignedToId: null, // Will be auto-assigned by intelligence service
+        assignedTo: null, // Will be auto-assigned by intelligence service
       },
     });
 
@@ -120,13 +114,12 @@ export async function POST(request: NextRequest) {
 
     // Add interaction record
     await prisma.interaction.create({
-      data: {
-        leadId: newLead.id,
-        type: 'lead_capture',
-        method: validatedData.source,
-        notes: `New lead captured from ${validatedData.source}`,
-        sourceDetails: validatedData.sourceDetails,
-      },
+              data: {
+          leadId: newLead.id,
+          type: 'EMAIL',
+          subject: `New lead captured from ${validatedData.source}`,
+          content: `New lead captured from ${validatedData.source}`,
+        },
     });
 
     // Trigger lead intelligence enrichment (async)
@@ -191,7 +184,7 @@ export async function GET() {
       }),
       // Source statistics
       prisma.lead.groupBy({
-        by: ['sources'],
+        by: ['source'],
         _count: {
           id: true,
         },
